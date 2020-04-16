@@ -1,0 +1,104 @@
+<html>
+    <style>
+        .fade
+        {
+            opacity:.1;
+        }
+        img
+        {
+            height: 100px
+        }
+    </style>
+    <body>
+        <div id="spread"><svg></svg></div>`
+        <div id="tooltip" style="position:absolute"></div>
+    </body>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script>
+    var classPromise = d3.json("classData.json")
+    
+    classPromise.then(function(students){
+        console.log(students)
+        var screen = {width: 500, height:300}
+        //vertical is space for left and right (move vertically) horizontal is for top and bottom (move horizontally).
+        //I did it this way because I like symmetry
+        var margin = {vertical:40, horizontal:40}
+        var graph = {width: screen.width-(2*margin.vertical), height: screen.height - (2*margin.horizontal)}
+        
+        var xScale = d3.scaleLinear()
+                        .domain([0,students[0].quizes.length-1])
+                        .range([0, graph.width])
+        
+        var lowQuiz = d3.min(students, function(student){return d3.min(student.quizes.map(function(quiz){return quiz.grade}))})
+        var highQuiz = d3.max(students, function(student){return d3.max(student.quizes.map(function(quiz){return quiz.grade}))})
+        var yScale = d3.scaleLinear()
+                        .domain([lowQuiz, highQuiz])
+                        .range([graph.height, 0])
+        
+        var svg = d3.select("#spread svg")
+                    .attr("height", screen.height)
+                    .attr("width", screen.width)
+                    .attr("id", "screen")
+        var xAxis = d3.axisBottom(xScale)
+        var yAxis = d3.axisLeft(yScale)
+        
+        var axes = svg.append("g")
+        axes.append("g")
+            .attr("transform", "translate(" + margin.vertical +","+(margin.horizontal + graph.height)+")")
+            .call(xAxis)
+        axes.append("g")
+            .attr("transform", "translate("+margin.vertical+","+(margin.horizontal)+")")
+            .call(yAxis)
+        
+        var labels = svg.append("g")
+        labels.append("g")
+                .attr("transform", "translate(" + (margin.vertical+graph.width/2) + "," + screen.height + ")")
+                .append("text")
+                .text("Week")
+                .attr("text-anchor", "middle")
+        labels.append("g")
+                .attr("transform", "translate(10," + (margin.horizontal+graph.height/2) +")")
+                .append("text")
+                .text("Quiz Score")
+                .attr("text-anchor", "middle")
+                .attr("transform", "rotate(90)")
+        
+        var linegenerator = d3.line()
+                                .x(function(quiz, i){return xScale(i)})
+                                .y(function(quiz){return yScale(quiz.grade)})
+        var lines = svg.append("g")
+                        .selectAll("g")
+                        .data(students)
+                        .enter()
+                        .append("g")
+                        .classed("line", true)
+                        .attr("fill", "none")
+                        .attr("stroke", "red")
+                        .attr("stroke-width", 2)
+                        .attr("transform", "translate(" + margin.vertical + "," + margin.horizontal + ")")
+                        .on("mouseover", function(student) {
+                            d3.selectAll(".line")
+                                .classed("fade", true)
+                            d3.select(this)
+                                .classed("fade", false)
+                            var xPosition = d3.event.pageX
+                            var yPosition = d3.event.pageY
+
+                            d3.select("#tooltip")
+                               .style("top", yPosition + "px")
+                               .style("left", xPosition + "px")
+                               .append("img")
+                               .attr("src", "imgs/" + student.picture)
+                        })
+                        .on("mouseout", function(student){
+                            d3.selectAll(".line")
+                              .classed("fade", false)
+                            d3.select("#tooltip img")
+                              .remove()
+                        })
+        lines.append("path")
+            .datum(function(student){return student.quizes})
+            .attr("d", linegenerator)
+    })
+    </script>
+</html>
